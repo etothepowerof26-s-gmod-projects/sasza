@@ -1,9 +1,9 @@
 AddCSLuaFile()
 
-GM.Name 		= ""
-GM.Author 		= ""
-GM.Email 		= ""
-GM.Website 		= ""
+GM.Name 		= "Zombie Assault"
+GM.Author 		= "Etothepowerof26"
+GM.Email 		= "N/A"
+GM.Website 		= "N/A"
 
 function recursiveInclusion( scanDirectory, isGamemode )
 	-- Null-coalescing for optional argument

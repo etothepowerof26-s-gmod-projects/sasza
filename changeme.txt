@@ -1,5 +1,5 @@
-"gamemodename"
+"sasza"
 {
-	"title"	"Gamemode Name"
+	"title"	"Zombie Assault"
 	"base"	"base"
 }
