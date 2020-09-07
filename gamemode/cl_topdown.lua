@@ -16,11 +16,13 @@ if not bCursorInit and not bTopDownInit then
 	gui.EnableScreenClicker( true )
 	bCursorInit = true
 
-	print("Autorefresh detected")
+	print( "Autorefresh detected" )
 
 end
 
 local TopDownDist = 72 * 2
+local lastzombo = SysTime()
+local LockedOnEnt
 hook.Add( "CalcView", "TopDown", function( ply, pos, angles, fov )
 	local view = {
 		origin = pos + Vector( 0, 0, TopDownDist ),
@@ -31,15 +33,40 @@ hook.Add( "CalcView", "TopDown", function( ply, pos, angles, fov )
 
 	if( system.HasFocus() )then
 		-- print( gui.ScreenToVector( input.GetCursorPos() ) )
+		--[[
+		
+	
+		]]
 		local vec = gui.ScreenToVector( input.GetCursorPos() )
-		local tr = util.QuickTrace(LocalPlayer():GetShootPos(), gui.ScreenToVector(gui.MousePos()),LocalPlayer())
+		local dist = math.Distance( 0, 0, input.GetCursorPos() )
+		local tr = util.QuickTrace( LocalPlayer():GetPos() + Vector( 0, 0, LocalPlayer():OBBMaxs().z * 3 ), vec * dist ^ 2, LocalPlayer() )
 		-- print(tr.HitPos)
+	
+		if( input.IsMouseDown( MOUSE_RIGHT ) )then
+			local ps = tr.HitPos
+			
+			-- print( ply:GetShootPos(), tr.HitPos, tr.Entity )
+			if SysTime() > lastzombo + .5 then
+				RunConsoleCommand( "zombo", ps.x, ps.y, ps.z )
+				lastzombo = SysTime()
+			end
+		end
 
 		local newPos = ( ply:GetShootPos() - tr.HitPos )
 		newPos = newPos:Angle()
 		newPos = newPos + Angle(0, 180, 0)
+		
+		if( tr.Entity ~= game.GetWorld() )then
+			-- newPos = ( ply:GetShootPos() - tr.Entity:GetPos() + Vector( 0, 0, tr.Entity:OBBCenter().z ) )
+			-- newPos = newPos:Angle()
+			-- newPos = newPos + Angle(0, 180, 0)
+			LockedOnEnt = tr.Entity
+		else
+			ply:SetEyeAngles( newPos )
+			LockedOnEnt = nil
+		end
+		-- print(vec)
 
-		ply:SetEyeAngles( newPos )
 	end
 
 	return view
@@ -64,12 +91,30 @@ local testCases =
 }
 
 hook.Add( "CreateMove", "TopDown", function( ucmd )
-	--if( mdata:KeyDown( IN_JUMP ) )then
-	--	mdata:SetButtons( bit.band( mdata:GetButtons(), bit.bnot( IN_JUMP ) ) )
-	--end
-	--ucmd:SetForwardMove( 40 )
+	-- setting view angles
 	
+	local vang = ucmd:GetViewAngles()
+	
+	if( !LockedOnEnt || !IsValid( LockedOnEnt ) )then
+		vang.p = 5
+	else
+		-- newPos = ( ply:GetShootPos() - tr.Entity:GetPos() + Vector( 0, 0, tr.Entity:OBBCenter().z ) )
+		-- newPos = newPos:Angle()
+		-- newPos = newPos + Angle(0, 180, 0)
+		local ply = LocalPlayer()
+		vang = ( ply:GetShootPos() - ( LockedOnEnt:GetPos() + Vector( 0, 0, LockedOnEnt:OBBCenter().z ) ) ):Angle() - Angle( 0, 180, 0 )
+		vang.p = -vang.p
+	end
+	
+	ucmd:SetViewAngles( vang )
+	
+	-- attacking
+	if( input.IsMouseDown( MOUSE_FIRST ) )then
+		ucmd:SetButtons( bit.bor( ucmd:GetButtons(), IN_ATTACK ) )
+	end
 
+	-- 8 axis movement that disregards the cursor
+	-- position
 	local move = Vector( ucmd:GetForwardMove(), ucmd:GetSideMove(), 0 )
 	local speed = math.sqrt( move.x * move.x + move.y * move.y )
 	
@@ -77,14 +122,15 @@ hook.Add( "CreateMove", "TopDown", function( ucmd )
 	local diffYaw
 
 	for _, v in ipairs( testCases ) do
+		local getn = #v
 		local passed = 0
-		for i = 1, #v do
+		for i = 1, getn do
 			if ucmd:KeyDown( v[ i ] ) then
 				passed = passed + 1
 			end
 		end
 
-		if passed == #v then
+		if passed == getn then
 			diffYaw = math.rad( v.CB( playerYaw ) )
 			break
 		end
@@ -95,27 +141,8 @@ hook.Add( "CreateMove", "TopDown", function( ucmd )
 		ucmd:SetSideMove( math.sin( diffYaw ) * speed )
 	end
 
-	local vang = ucmd:GetViewAngles()
-	vang.p = 0
-
-	ucmd:SetViewAngles( vang )
-
-	print(ucmd:GetViewAngles())
-	-- mdata:SetSideSpeed( 1000 )
 end )
 
---[[hook.Add("HUDPaint", "a", function()
-	surface.SetDrawColor(255, 255, 255)
 
-	--surface.DrawLine(ScrW()/2,ScrH()/2,input.GetCursorPos())
-
-	surface.DrawLine(ScrW()/2,ScrH()/2-ScrH()/4,ScrW()/2,ScrH()/2)
-
-	local new = LocalPlayer():GetPos() + (LocalPlayer():GetForward() * 60)
-	local dat = new:ToScreen()
-	surface.DrawLine(dat.x,dat.y, ScrW()/2,ScrH()/2)
-
-	--surface.DrawLine(ScrW()/2,ScrH()/2+ScrH()/4,input.GetCursorPos())
-end)]]
 
 bTopDownInit = true
